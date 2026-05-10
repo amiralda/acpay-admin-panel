@@ -48,8 +48,12 @@ const RULES = {
     placeholder: 'Email or +1xxxxxxxxxx',
     hint:        'Email or US phone number (+1xxxxxxxxxx)',
     disabled:    false,
-    validate: h => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(h) || /^\+1\d{10}$/.test(h)
-      ? '' : 'Must be a valid email or US phone (+1xxxxxxxxxx)',
+    validate: h => {
+      const v       = h.replace(/\s/g, '')   // strip spaces before testing
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+      const isPhone = /^\+1\d{10}$/.test(v)  // +1 then exactly 10 digits = 12 chars total
+      return (isEmail || isPhone) ? '' : 'Must be a valid email or US phone (+1xxxxxxxxxx)'
+    },
   },
   Venmo: {
     placeholder: '@username',

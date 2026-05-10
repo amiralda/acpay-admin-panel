@@ -95,7 +95,7 @@ function EditMemberModal({ member, onClose, onSaved, onDeleted }) {
     setDeleting(true)
     const { error: err } = await supabase.from('sol_members').delete().eq('id', member.id)
     setDeleting(false)
-    if (err) { setSaveError(err.message); setConfirmDelete(false); return }
+    if (err) { setSaveError(friendlyError(err)); setConfirmDelete(false); return }
     onDeleted(member.id)
   }
 
@@ -168,6 +168,8 @@ function EditMemberModal({ member, onClose, onSaved, onDeleted }) {
                 {!isHandleDisabled(form.p2p_platform) && <span className="text-red-500 ml-0.5">*</span>}
               </label>
               <input
+                type="text"
+                autoComplete="off"
                 value={form.p2p_handle}
                 onChange={e => setField('p2p_handle', e.target.value)}
                 disabled={isHandleDisabled(form.p2p_platform)}

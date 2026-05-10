@@ -207,6 +207,8 @@ export default function MemberAdd() {
                 {!isHandleDisabled(form.p2p_platform) && <span className="text-red-500 ml-0.5">*</span>}
               </label>
               <input
+                type="text"
+                autoComplete="off"
                 value={form.p2p_handle}
                 onChange={e => setField('p2p_handle', e.target.value)}
                 disabled={isHandleDisabled(form.p2p_platform)}
