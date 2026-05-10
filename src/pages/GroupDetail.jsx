@@ -4,10 +4,9 @@ import { supabase } from '../lib/supabase'
 import { validateName, validatePhone } from '../lib/validation'
 import { P2P_PLATFORMS, validateHandle, getHint, getPlaceholder, isHandleDisabled } from '../lib/p2pPlatforms'
 import { friendlyError } from '../lib/errors'
+import { LANGUAGES, langLabel } from '../lib/languages'
 import ImportMembersModal from '../components/ImportMembersModal'
 import { ArrowLeft, UserPlus, RefreshCw, Pencil, X, Trash2, AlertTriangle, Upload, CheckCircle2 } from 'lucide-react'
-
-const LANG_LABEL = { ht: 'Kreyòl', fr: 'Français', en: 'English' }
 
 // ─── Payment status badge ────────────────────────────────────────────────────
 function PaymentBadge({ status }) {
@@ -146,9 +145,9 @@ function EditMemberModal({ member, onClose, onSaved, onDeleted }) {
           <div>
             <label className={labelCls}>Preferred Language</label>
             <select value={form.preferred_language} onChange={e => setField('preferred_language', e.target.value)} className={inputCls('')}>
-              <option value="ht">Kreyòl Ayisyen</option>
-              <option value="fr">Français</option>
-              <option value="en">English</option>
+              {LANGUAGES.map(l => (
+                <option key={l.value} value={l.value}>{l.label}</option>
+              ))}
             </select>
           </div>
 
@@ -366,7 +365,7 @@ export default function GroupDetail() {
                     <td className="px-4 py-3 font-medium text-gray-700">{m.rotation_position}</td>
                     <td className="px-4 py-3 font-medium text-gray-900">{m.full_name ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-500">{m.phone_number}</td>
-                    <td className="px-4 py-3 text-gray-500">{LANG_LABEL[m.preferred_language] ?? m.preferred_language}</td>
+                    <td className="px-4 py-3 text-gray-500">{langLabel(m.preferred_language)}</td>
                     <td className="px-4 py-3 text-gray-500">{m.p2p_platform ? `${m.p2p_platform} ${m.p2p_handle ?? ''}` : '—'}</td>
                     <td className="px-4 py-3"><MemberStatusBadges member={m} /></td>
                     <td className="px-4 py-3 text-right">

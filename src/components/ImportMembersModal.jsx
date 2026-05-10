@@ -27,8 +27,13 @@ const TEMPLATE_CSV = [
 ].join('\n') + '\n'
 
 const LANG_MAP = {
-  ht: 'ht', 'kreyòl': 'ht', creole: 'ht', haitian: 'ht',
-  fr: 'fr', french: 'fr',
+  // Haitian Creole variants
+  ht: 'ht', 'kreyòl': 'ht', 'kreyol': 'ht', creole: 'ht',
+  haitian: 'ht', 'haitian creole': 'ht', 'kreyòl ayisyen': 'ht',
+  'kreyol ayisyen': 'ht', ayisyen: 'ht',
+  // French variants
+  fr: 'fr', 'français': 'fr', 'francais': 'fr', french: 'fr',
+  // English variants
   en: 'en', english: 'en',
 }
 

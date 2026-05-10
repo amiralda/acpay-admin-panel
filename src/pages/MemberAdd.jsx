@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { validateName, validatePhone } from '../lib/validation'
 import { P2P_PLATFORMS, validateHandle, getHint, getPlaceholder, isHandleDisabled } from '../lib/p2pPlatforms'
 import { friendlyError } from '../lib/errors'
+import { LANGUAGES } from '../lib/languages'
 import { ArrowLeft } from 'lucide-react'
 
 const N8N_WEBHOOK = import.meta.env.VITE_N8N_WEBHOOK_URL
@@ -164,9 +165,9 @@ export default function MemberAdd() {
             onChange={e => setField('preferred_language', e.target.value)}
             className={inputCls('')}
           >
-            <option value="ht">Kreyòl Ayisyen</option>
-            <option value="fr">Français</option>
-            <option value="en">English</option>
+            {LANGUAGES.map(l => (
+              <option key={l.value} value={l.value}>{l.label}</option>
+            ))}
           </select>
         </div>
 
