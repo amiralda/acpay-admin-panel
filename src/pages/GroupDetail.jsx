@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { validateName, validatePhone } from '../lib/validation'
 import { P2P_PLATFORMS, validateHandle, getHint, getPlaceholder, isHandleDisabled } from '../lib/p2pPlatforms'
+import { friendlyError } from '../lib/errors'
 import ImportMembersModal from '../components/ImportMembersModal'
 import { ArrowLeft, UserPlus, RefreshCw, Pencil, X, Trash2, AlertTriangle, Upload, CheckCircle2 } from 'lucide-react'
 
@@ -86,7 +87,7 @@ function EditMemberModal({ member, onClose, onSaved, onDeleted }) {
       })
       .eq('id', member.id)
     setSaving(false)
-    if (err) { setSaveError(err.message); return }
+    if (err) { setSaveError(friendlyError(err)); return }
     onSaved({ ...member, ...form, full_name: form.full_name.trim() })
   }
 

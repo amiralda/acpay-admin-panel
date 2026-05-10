@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Mail } from 'lucide-react'
 
-const REDIRECT = 'https://acpay-admin-panel.vercel.app/dashboard'
+// TODO (Medium): move VITE_APP_URL to Vercel env vars so local dev redirects correctly
+const BASE     = import.meta.env.VITE_APP_URL ?? 'https://acpay-admin-panel.vercel.app'
+const REDIRECT = `${BASE}/dashboard`
 
 export default function Login() {
   const [email,   setEmail]   = useState('')

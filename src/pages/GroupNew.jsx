@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { friendlyError } from '../lib/errors'
 import { ArrowLeft } from 'lucide-react'
 
 export default function GroupNew() {
@@ -14,7 +15,7 @@ export default function GroupNew() {
     start_date: '',
     total_cycles: '',
   })
-  const [error, setError]   = useState('')
+  const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
@@ -22,9 +23,13 @@ export default function GroupNew() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+
+    const name = form.name.trim()
+    if (!name) { setError('Group name is required.'); return }
+
     setLoading(true)
     const { error: err } = await supabase.from('sol_groups').insert({
-      name:                form.name,
+      name,
       contribution_amount: parseFloat(form.contribution_amount),
       frequency:           form.frequency,
       start_date:          form.start_date || null,
@@ -34,7 +39,7 @@ export default function GroupNew() {
       created_by:          user.id,
     })
     setLoading(false)
-    if (err) { setError(err.message); return }
+    if (err) { setError(friendlyError(err)); return }
     navigate('/dashboard')
   }
 

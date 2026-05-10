@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { validateName, validatePhone } from '../lib/validation'
 import { P2P_PLATFORMS, validateHandle, getHint, getPlaceholder, isHandleDisabled } from '../lib/p2pPlatforms'
+import { friendlyError } from '../lib/errors'
 import { ArrowLeft } from 'lucide-react'
 
 const N8N_WEBHOOK = import.meta.env.VITE_N8N_WEBHOOK_URL
@@ -83,7 +84,7 @@ export default function MemberAdd() {
 
     if (insertErr) {
       setLoading(false)
-      setSubmitError(insertErr.message)
+      setSubmitError(friendlyError(insertErr))
       return
     }
 

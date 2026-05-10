@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import Papa from 'papaparse'
 import { validateName, validatePhone } from '../lib/validation'
 import { normPlatform } from '../lib/p2pPlatforms'
+import { friendlyError } from '../lib/errors'
 import { supabase } from '../lib/supabase'
 import {
   X, Upload, Users, ClipboardList, FileText,
@@ -544,7 +545,7 @@ export default function ImportMembersModal({ groupId, existingPhones, onClose, o
 
     const { error } = await supabase.from('sol_members').insert(records)
     setImporting(false)
-    if (error) { setImportError(error.message); return }
+    if (error) { setImportError(friendlyError(error)); return }
 
     const skipped = (parsedRows?.length ?? 0) - validRows.length
     onImported(validRows.length, skipped)

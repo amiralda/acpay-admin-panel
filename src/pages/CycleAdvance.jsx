@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { friendlyError } from '../lib/errors'
 import { ArrowLeft, RefreshCw, AlertTriangle } from 'lucide-react'
 
 export default function CycleAdvance() {
@@ -41,7 +42,7 @@ export default function CycleAdvance() {
         .update({ status: 'completed' })
         .eq('id', id)
       setAdvancing(false)
-      if (err) { setError(err.message); return }
+      if (err) { setError(friendlyError(err)); return }
       setDone(true)
       return
     }

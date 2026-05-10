@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { friendlyError } from '../lib/errors'
 import { AlertTriangle, CheckCircle } from 'lucide-react'
 
 function StatusBadge({ status }) {
@@ -17,14 +18,15 @@ function DisputeCard({ dispute, onResolved }) {
   const [error,   setError]   = useState('')
 
   async function resolve() {
-    if (!notes.trim()) { setError('Enter resolution notes before marking resolved.'); return }
+    const trimmedNotes = notes.trim()
+    if (!trimmedNotes) { setError('Enter resolution notes before marking resolved.'); return }
     setLoading(true)
     const { error: err } = await supabase
       .from('sol_disputes')
-      .update({ status: 'resolved', resolution_notes: notes })
+      .update({ status: 'resolved', resolution_notes: trimmedNotes })
       .eq('id', dispute.id)
     setLoading(false)
-    if (err) { setError(err.message); return }
+    if (err) { setError(friendlyError(err)); return }
     onResolved(dispute.id)
   }
 
