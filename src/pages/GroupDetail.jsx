@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { validateName, validatePhone } from '../lib/validation'
-import { ArrowLeft, UserPlus, RefreshCw, Pencil, X, Trash2, AlertTriangle } from 'lucide-react'
+import { P2P_PLATFORMS, validateHandle, getHint, getPlaceholder, isHandleDisabled } from '../lib/p2pPlatforms'
+import ImportMembersModal from '../components/ImportMembersModal'
+import { ArrowLeft, UserPlus, RefreshCw, Pencil, X, Trash2, AlertTriangle, Upload, CheckCircle2 } from 'lucide-react'
 
 const LANG_LABEL = { ht: 'Kreyòl', fr: 'Français', en: 'English' }
 
@@ -36,23 +38,35 @@ function EditMemberModal({ member, onClose, onSaved, onDeleted }) {
     p2p_platform:       member.p2p_platform       ?? '',
     p2p_handle:         member.p2p_handle         ?? '',
   })
-  const [fieldErrors,    setFieldErrors]    = useState({ full_name: '', phone_number: '' })
+  const [fieldErrors,    setFieldErrors]    = useState({
+    full_name:    '',
+    phone_number: '',
+    p2p_handle:   validateHandle(member.p2p_platform ?? '', member.p2p_handle ?? ''),
+  })
   const [saveError,      setSaveError]      = useState('')
   const [saving,         setSaving]         = useState(false)
   const [confirmDelete,  setConfirmDelete]  = useState(false)
   const [deleting,       setDeleting]       = useState(false)
 
   function setField(k, v) {
+    // Platform change clears handle and its error immediately
+    if (k === 'p2p_platform') {
+      setForm(f => ({ ...f, p2p_platform: v, p2p_handle: '' }))
+      setFieldErrors(e => ({ ...e, p2p_handle: '' }))
+      return
+    }
     setForm(f => ({ ...f, [k]: v }))
     if (k === 'full_name')    setFieldErrors(e => ({ ...e, full_name:    validateName(v) }))
     if (k === 'phone_number') setFieldErrors(e => ({ ...e, phone_number: validatePhone(v) }))
+    if (k === 'p2p_handle')   setFieldErrors(e => ({ ...e, p2p_handle:   validateHandle(form.p2p_platform, v) }))
   }
 
   const isValid =
     form.full_name.trim().length >= 2 &&
     form.phone_number.length > 0 &&
     !fieldErrors.full_name &&
-    !fieldErrors.phone_number
+    !fieldErrors.phone_number &&
+    !fieldErrors.p2p_handle
 
   async function handleSave() {
     const nameErr  = validateName(form.full_name)
@@ -137,26 +151,34 @@ function EditMemberModal({ member, onClose, onSaved, onDeleted }) {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>P2P Platform</label>
+            <select value={form.p2p_platform} onChange={e => setField('p2p_platform', e.target.value)} className={inputCls('')}>
+              {P2P_PLATFORMS.map(p => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {form.p2p_platform !== '' && (
             <div>
-              <label className={labelCls}>P2P Platform</label>
-              <select value={form.p2p_platform} onChange={e => setField('p2p_platform', e.target.value)} className={inputCls('')}>
-                <option value="">— None —</option>
-                <option value="Zelle">Zelle</option>
-                <option value="CashApp">CashApp</option>
-                <option value="Venmo">Venmo</option>
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>P2P Handle</label>
+              <label className={labelCls}>
+                P2P Handle
+                {!isHandleDisabled(form.p2p_platform) && <span className="text-red-500 ml-0.5">*</span>}
+              </label>
               <input
                 value={form.p2p_handle}
                 onChange={e => setField('p2p_handle', e.target.value)}
-                className={inputCls('')}
-                placeholder="$handle or email"
+                disabled={isHandleDisabled(form.p2p_platform)}
+                placeholder={getPlaceholder(form.p2p_platform)}
+                className={`${inputCls(fieldErrors.p2p_handle)} disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed`}
               />
+              {fieldErrors.p2p_handle
+                ? <p className={errCls}>{fieldErrors.p2p_handle}</p>
+                : <p className="text-xs text-gray-400 mt-1">{getHint(form.p2p_platform)}</p>
+              }
             </div>
-          </div>
+          )}
 
           {saveError && <p className={errCls}>{saveError}</p>}
         </div>
@@ -218,6 +240,9 @@ export default function GroupDetail() {
   const [payments,      setPayments]      = useState([])
   const [loading,       setLoading]       = useState(true)
   const [editingMember, setEditingMember] = useState(null)
+  const [showImport,    setShowImport]    = useState(false)
+  const [toast,         setToast]         = useState(null)   // { count, skipped } | null
+  const toastTimer                        = useRef(null)
 
   useEffect(() => {
     async function load() {
@@ -241,9 +266,21 @@ export default function GroupDetail() {
     setEditingMember(null)
   }
 
-  function handleMemberDeleted(id) {
-    setMembers(prev => prev.filter(m => m.id !== id))
+  function handleMemberDeleted(deletedId) {
+    setMembers(prev => prev.filter(m => m.id !== deletedId))
     setEditingMember(null)
+  }
+
+  async function handleImported(count, skipped) {
+    setShowImport(false)
+    // Refetch members to get DB-assigned IDs for the imported rows
+    const { data } = await supabase
+      .from('sol_members').select('*').eq('group_id', id).order('rotation_position')
+    setMembers(data ?? [])
+    // Show toast and auto-dismiss after 6 s
+    clearTimeout(toastTimer.current)
+    setToast({ count, skipped })
+    toastTimer.current = setTimeout(() => setToast(null), 6000)
   }
 
   if (loading) return <p className="text-sm text-gray-400">Loading…</p>
@@ -267,6 +304,12 @@ export default function GroupDetail() {
             </div>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={() => setShowImport(true)}
+              className="flex items-center gap-2 border border-gray-300 hover:border-brand-400 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Upload size={15} /> Import Members
+            </button>
             <Link to={`/groups/${id}/members/add`}
               className="flex items-center gap-2 border border-gray-300 hover:border-brand-400 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
               <UserPlus size={15} /> Add Member
@@ -371,7 +414,7 @@ export default function GroupDetail() {
 
       </div>
 
-      {/* Edit modal — rendered outside main flow to avoid table overflow clipping */}
+      {/* Edit modal */}
       {editingMember && (
         <EditMemberModal
           member={editingMember}
@@ -379,6 +422,36 @@ export default function GroupDetail() {
           onSaved={handleMemberSaved}
           onDeleted={handleMemberDeleted}
         />
+      )}
+
+      {/* Import modal */}
+      {showImport && (
+        <ImportMembersModal
+          groupId={id}
+          existingPhones={members.map(m => m.phone_number)}
+          onClose={() => setShowImport(false)}
+          onImported={handleImported}
+        />
+      )}
+
+      {/* Success toast */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-start gap-3 bg-white border border-gray-200 shadow-lg rounded-xl px-5 py-4 max-w-sm">
+          <CheckCircle2 size={18} className="text-green-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 text-sm">
+            <p className="font-semibold text-gray-900">
+              {toast.count} member{toast.count !== 1 ? 's' : ''} imported successfully
+            </p>
+            {toast.skipped > 0 && (
+              <p className="text-gray-500 mt-0.5">
+                {toast.skipped} row{toast.skipped !== 1 ? 's' : ''} skipped due to validation errors
+              </p>
+            )}
+          </div>
+          <button onClick={() => setToast(null)} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+            <X size={15} />
+          </button>
+        </div>
       )}
     </>
   )

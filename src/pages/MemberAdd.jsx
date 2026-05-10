@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { validateName, validatePhone } from '../lib/validation'
+import { P2P_PLATFORMS, validateHandle, getHint, getPlaceholder, isHandleDisabled } from '../lib/p2pPlatforms'
 import { ArrowLeft } from 'lucide-react'
 
 const N8N_WEBHOOK = import.meta.env.VITE_N8N_WEBHOOK_URL
 
-const EMPTY_ERRORS = { full_name: '', phone_number: '' }
+const EMPTY_ERRORS = { full_name: '', phone_number: '', p2p_handle: '' }
 
 export default function MemberAdd() {
   const { id: groupId } = useParams()
@@ -17,15 +18,24 @@ export default function MemberAdd() {
     phone_number:       '',
     preferred_language: 'ht',
     rotation_position:  '',
+    p2p_platform:       '',
+    p2p_handle:         '',
   })
   const [fieldErrors, setFieldErrors] = useState(EMPTY_ERRORS)
   const [submitError, setSubmitError] = useState('')
   const [loading,     setLoading]     = useState(false)
 
   function setField(k, v) {
+    // Platform change clears handle and its error immediately
+    if (k === 'p2p_platform') {
+      setForm(f => ({ ...f, p2p_platform: v, p2p_handle: '' }))
+      setFieldErrors(e => ({ ...e, p2p_handle: '' }))
+      return
+    }
     setForm(f => ({ ...f, [k]: v }))
     if (k === 'full_name')    setFieldErrors(e => ({ ...e, full_name:    validateName(v) }))
     if (k === 'phone_number') setFieldErrors(e => ({ ...e, phone_number: validatePhone(v) }))
+    if (k === 'p2p_handle')   setFieldErrors(e => ({ ...e, p2p_handle:   validateHandle(form.p2p_platform, v) }))
   }
 
   const isValid =
@@ -33,16 +43,18 @@ export default function MemberAdd() {
     form.phone_number.length > 0 &&
     form.rotation_position !== '' &&
     !fieldErrors.full_name &&
-    !fieldErrors.phone_number
+    !fieldErrors.phone_number &&
+    !fieldErrors.p2p_handle
 
   async function handleSubmit(e) {
     e.preventDefault()
 
-    // Final validation pass before submit
-    const nameErr  = validateName(form.full_name)
-    const phoneErr = validatePhone(form.phone_number)
-    if (nameErr || phoneErr) {
-      setFieldErrors({ full_name: nameErr, phone_number: phoneErr })
+    // Final validation pass
+    const nameErr   = validateName(form.full_name)
+    const phoneErr  = validatePhone(form.phone_number)
+    const handleErr = validateHandle(form.p2p_platform, form.p2p_handle)
+    if (nameErr || phoneErr || handleErr) {
+      setFieldErrors({ full_name: nameErr, phone_number: phoneErr, p2p_handle: handleErr })
       return
     }
 
@@ -59,6 +71,8 @@ export default function MemberAdd() {
         phone_number:       form.phone_number,
         preferred_language: form.preferred_language,
         rotation_position:  parseInt(form.rotation_position, 10),
+        p2p_platform:       form.p2p_platform || null,
+        p2p_handle:         form.p2p_handle   || null,
         onboarded:          false,
         onboarding_step:    0,
         accepted_terms:     false,
@@ -88,6 +102,8 @@ export default function MemberAdd() {
           phone_number:        form.phone_number,
           full_name:           form.full_name.trim(),
           preferred_language:  form.preferred_language,
+          p2p_platform:        form.p2p_platform || null,
+          p2p_handle:          form.p2p_handle   || null,
           group_name:          group?.name ?? '',
           contribution_amount: group?.contribution_amount ?? 0,
           frequency:           group?.frequency ?? '',
@@ -165,6 +181,43 @@ export default function MemberAdd() {
             placeholder="3"
           />
           <p className="text-xs text-gray-400 mt-1">Which cycle does this member receive the pot?</p>
+        </div>
+
+        <div className="border-t border-gray-100 pt-4 space-y-4">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">P2P Payment Info (optional)</p>
+
+          <div>
+            <label className={labelCls}>P2P Platform</label>
+            <select
+              value={form.p2p_platform}
+              onChange={e => setField('p2p_platform', e.target.value)}
+              className={inputCls('')}
+            >
+              {P2P_PLATFORMS.map(p => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {form.p2p_platform !== '' && (
+            <div>
+              <label className={labelCls}>
+                P2P Handle
+                {!isHandleDisabled(form.p2p_platform) && <span className="text-red-500 ml-0.5">*</span>}
+              </label>
+              <input
+                value={form.p2p_handle}
+                onChange={e => setField('p2p_handle', e.target.value)}
+                disabled={isHandleDisabled(form.p2p_platform)}
+                placeholder={getPlaceholder(form.p2p_platform)}
+                className={`${inputCls(fieldErrors.p2p_handle)} disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed`}
+              />
+              {fieldErrors.p2p_handle
+                ? <p className={errCls}>{fieldErrors.p2p_handle}</p>
+                : <p className="text-xs text-gray-400 mt-1">{getHint(form.p2p_platform)}</p>
+              }
+            </div>
+          )}
         </div>
 
         {submitError && <p className={errCls}>{submitError}</p>}
