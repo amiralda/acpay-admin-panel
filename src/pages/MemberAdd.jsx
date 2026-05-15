@@ -28,6 +28,7 @@ export default function MemberAdd() {
   const [loading,     setLoading]     = useState(false)
 
   function setField(k, v) {
+    if (submitError) setSubmitError('') // Clear stale submit error on any edit
     // Platform change clears handle and its error immediately
     if (k === 'p2p_platform') {
       setForm(f => ({ ...f, p2p_platform: v, p2p_handle: '' }))

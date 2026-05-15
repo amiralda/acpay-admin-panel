@@ -48,7 +48,27 @@ function EditMemberModal({ member, onClose, onSaved, onDeleted }) {
   const [confirmDelete,  setConfirmDelete]  = useState(false)
   const [deleting,       setDeleting]       = useState(false)
 
+  // Defense 1: reset all state whenever we're opened for a different member
+  useEffect(() => {
+    setForm({
+      full_name:          member.full_name          ?? '',
+      phone_number:       member.phone_number       ?? '',
+      preferred_language: member.preferred_language ?? 'ht',
+      p2p_platform:       member.p2p_platform       ?? '',
+      p2p_handle:         member.p2p_handle         ?? '',
+    })
+    setFieldErrors({
+      full_name:    '',
+      phone_number: '',
+      p2p_handle:   validateHandle(member.p2p_platform ?? '', member.p2p_handle ?? ''),
+    })
+    setSaveError('')
+    setSaving(false)
+    setConfirmDelete(false)
+  }, [member.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function setField(k, v) {
+    if (saveError) setSaveError('') // Defense 3: clear stale error on any edit
     // Platform change clears handle and its error immediately
     if (k === 'p2p_platform') {
       setForm(f => ({ ...f, p2p_platform: v, p2p_handle: '' }))
@@ -69,15 +89,12 @@ function EditMemberModal({ member, onClose, onSaved, onDeleted }) {
     !fieldErrors.p2p_handle
 
   async function handleSave() {
+    setSaveError('') // Defense 2: clear at the very start of every save attempt
     try {
-      console.log('[1] handleSave started')
-
       const nameErr  = validateName(form.full_name)
       const phoneErr = validatePhone(form.phone_number)
-      console.log('[2] Validation:', { nameErr, phoneErr })
       if (nameErr || phoneErr) { setFieldErrors({ full_name: nameErr, phone_number: phoneErr }); return }
 
-      setSaveError('')
       setSaving(true)
 
       const payload = {
@@ -87,44 +104,23 @@ function EditMemberModal({ member, onClose, onSaved, onDeleted }) {
         p2p_platform:       form.p2p_platform || null,
         p2p_handle:         form.p2p_handle   || null,
       }
-      console.log('[3] Form state:', JSON.stringify(form, null, 2))
-      console.log('[3] Payload:', JSON.stringify(payload, null, 2))
-      console.log('[3] Member ID:', member?.id)
 
+      // Convert any remaining empty strings to null before hitting Supabase CHECK constraints
       const cleanPayload = Object.fromEntries(
         Object.entries(payload).map(([k, v]) => [k, v === '' ? null : v])
       )
-      console.log('[3b] cleanPayload:', JSON.stringify(cleanPayload, null, 2))
 
-      console.log('[4] Calling supabase.update...')
-      const { data, error: err } = await supabase
+      const { error: err } = await supabase
         .from('sol_members')
         .update(cleanPayload)
         .eq('id', member.id)
-      console.log('[4] Supabase returned:', { data, error: err })
 
-      if (err) {
-        console.error('=== SUPABASE ERROR ===')
-        console.error('Code:', err.code)
-        console.error('Message:', err.message)
-        console.error('Details:', err.details)
-        console.error('Hint:', err.hint)
-        console.error('Full error object:', JSON.stringify(err, null, 2))
-        setSaving(false)
-        setSaveError(friendlyError(err))
-        return
-      }
+      if (err) { setSaving(false); setSaveError(friendlyError(err)); return }
 
-      console.log('[5] Updating local state')
       setSaving(false)
-      console.log('[6] Calling onSaved')
+      setSaveError('') // Defense 4: explicit clear on confirmed success
       onSaved({ ...member, ...form, full_name: form.full_name.trim() })
-      console.log('[6] onSaved returned')
     } catch (err) {
-      console.error('[CATCH] Error type:', err?.constructor?.name)
-      console.error('[CATCH] Error message:', err?.message)
-      console.error('[CATCH] Stack:', err?.stack)
-      console.error('[CATCH] Full:', err)
       setSaving(false)
       setSaveError(friendlyError(err))
     }

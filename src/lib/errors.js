@@ -31,8 +31,8 @@ const PATTERN_MAP = [
  * Never call err.message directly in UI — always pass through this function.
  */
 export function friendlyError(err) {
-  console.log('[friendlyError input]:', err)
-  if (!err) return GENERIC
+  if (!err) return ''                    // null/undefined → no error to display
+  if (typeof err === 'string') return err // pre-formatted strings pass through
   if (CODE_MAP[err.code]) return CODE_MAP[err.code]
   const msg = err.message ?? ''
   for (const [pattern, friendly] of PATTERN_MAP) {
