@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { validateName, validatePhone } from '../lib/validation'
-import { P2P_PLATFORMS, validateHandle, getHint, getPlaceholder, isHandleDisabled } from '../lib/p2pPlatforms'
+import { P2P_PLATFORMS, platformLabel, validateHandle, getHint, getPlaceholder, isHandleDisabled } from '../lib/p2pPlatforms'
 import { friendlyError } from '../lib/errors'
 import { LANGUAGES, langLabel } from '../lib/languages'
 import ImportMembersModal from '../components/ImportMembersModal'
@@ -75,18 +75,43 @@ function EditMemberModal({ member, onClose, onSaved, onDeleted }) {
 
     setSaveError('')
     setSaving(true)
+
+    const payload = {
+      full_name:          form.full_name.trim(),
+      phone_number:       form.phone_number,
+      preferred_language: form.preferred_language,
+      p2p_platform:       form.p2p_platform || null,
+      p2p_handle:         form.p2p_handle   || null,
+    }
+
+    console.log('=== EDIT MEMBER PATCH ===')
+    console.log('Form state:', JSON.stringify(form, null, 2))
+    console.log('Payload being sent:', JSON.stringify(payload, null, 2))
+    console.log('Member ID:', member?.id)
+
+    // Safety net: convert any remaining empty strings to null so no CHECK constraint fires
+    const cleanPayload = Object.fromEntries(
+      Object.entries(payload).map(([k, v]) => [k, v === '' ? null : v])
+    )
+
     const { error: err } = await supabase
       .from('sol_members')
-      .update({
-        full_name:          form.full_name.trim(),
-        phone_number:       form.phone_number,
-        preferred_language: form.preferred_language,
-        p2p_platform:       form.p2p_platform  || null,
-        p2p_handle:         form.p2p_handle    || null,
-      })
+      .update(cleanPayload)
       .eq('id', member.id)
+
+    if (err) {
+      console.error('=== SUPABASE ERROR ===')
+      console.error('Code:', err.code)
+      console.error('Message:', err.message)
+      console.error('Details:', err.details)
+      console.error('Hint:', err.hint)
+      console.error('Full error object:', JSON.stringify(err, null, 2))
+      setSaving(false)
+      setSaveError(friendlyError(err))
+      return
+    }
+
     setSaving(false)
-    if (err) { setSaveError(friendlyError(err)); return }
     onSaved({ ...member, ...form, full_name: form.full_name.trim() })
   }
 
@@ -366,7 +391,7 @@ export default function GroupDetail() {
                     <td className="px-4 py-3 font-medium text-gray-900">{m.full_name ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-500">{m.phone_number}</td>
                     <td className="px-4 py-3 text-gray-500">{langLabel(m.preferred_language)}</td>
-                    <td className="px-4 py-3 text-gray-500">{m.p2p_platform ? `${m.p2p_platform} ${m.p2p_handle ?? ''}` : '—'}</td>
+                    <td className="px-4 py-3 text-gray-500">{m.p2p_platform ? `${platformLabel(m.p2p_platform)} ${m.p2p_handle ?? ''}`.trim() : '—'}</td>
                     <td className="px-4 py-3"><MemberStatusBadges member={m} /></td>
                     <td className="px-4 py-3 text-right">
                       <button

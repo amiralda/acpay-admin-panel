@@ -1,50 +1,59 @@
 // Single source of truth for P2P platform definitions, validation, and hints.
 // Used by EditMemberModal, MemberAdd, and ImportMembersModal.
+//
+// IMPORTANT: `value` fields are the exact strings stored in the Supabase
+// `p2p_platform` column (lowercase, underscore-separated). The CHECK constraint
+// on sol_members must match these values exactly. See migration_p2p_platform.sql.
 
 export const P2P_PLATFORMS = [
   { value: '',             label: '— None —' },
-  { value: 'MonCash',      label: 'MonCash (Haiti)' },
-  { value: 'Natcash',      label: 'Natcash (Haiti)' },
-  { value: 'Lajan Cash',   label: 'Lajan Cash (Haiti)' },
-  { value: 'CashApp',      label: 'CashApp (US)' },
-  { value: 'Zelle',        label: 'Zelle (US)' },
-  { value: 'Venmo',        label: 'Venmo (US)' },
-  { value: 'PayPal',       label: 'PayPal (Global)' },
-  { value: 'Remitly',      label: 'Remitly (International)' },
-  { value: 'Cash in Hand', label: 'Cash in Hand (physical)' },
+  { value: 'moncash',      label: 'MonCash (Haiti)' },
+  { value: 'natcash',      label: 'Natcash (Haiti)' },
+  { value: 'lajan_cash',   label: 'Lajan Cash (Haiti)' },
+  { value: 'cashapp',      label: 'CashApp (US)' },
+  { value: 'zelle',        label: 'Zelle (US)' },
+  { value: 'venmo',        label: 'Venmo (US)' },
+  { value: 'paypal',       label: 'PayPal (Global)' },
+  { value: 'remitly',      label: 'Remitly (International)' },
+  { value: 'cash_in_hand', label: 'Cash in Hand (physical)' },
 ]
 
-// Lookup map: value → rule definition
+/** Convert a stored DB value to its display label. Falls back to the raw value. */
+export function platformLabel(value) {
+  return P2P_PLATFORMS.find(p => p.value === value)?.label ?? value ?? '—'
+}
+
+// Lookup map: DB value → rule definition
 const RULES = {
-  MonCash: {
+  moncash: {
     placeholder: '+509 XXXX XXXX',
     hint:        'Nimewo MonCash ou (ex: +50912345678)',
     disabled:    false,
     validate: h => /^\+509\d{8}$/.test(h.replace(/\s/g, ''))
       ? '' : 'Must start with +509 followed by exactly 8 digits',
   },
-  Natcash: {
+  natcash: {
     placeholder: '+509 XXXX XXXX',
     hint:        'Nimewo Natcash ou (ex: +50912345678)',
     disabled:    false,
     validate: h => /^\+509\d{8}$/.test(h.replace(/\s/g, ''))
       ? '' : 'Must start with +509 followed by exactly 8 digits',
   },
-  'Lajan Cash': {
+  lajan_cash: {
     placeholder: '+509 XXXX XXXX',
     hint:        'Nimewo Lajan Cash ou (ex: +50912345678)',
     disabled:    false,
     validate: h => /^\+509\d{8}$/.test(h.replace(/\s/g, ''))
       ? '' : 'Must start with +509 followed by exactly 8 digits',
   },
-  CashApp: {
+  cashapp: {
     placeholder: '$cashtag',
     hint:        'Your $Cashtag (ex: $DanyAug)',
     disabled:    false,
     validate: h => h.startsWith('$') && h.length >= 3 && !/\s/.test(h)
       ? '' : 'Must start with $ with no spaces (ex: $DanyAug)',
   },
-  Zelle: {
+  zelle: {
     placeholder: 'Email or +1xxxxxxxxxx',
     hint:        'Email or US phone number (+1xxxxxxxxxx)',
     disabled:    false,
@@ -55,28 +64,28 @@ const RULES = {
       return (isEmail || isPhone) ? '' : 'Must be a valid email or US phone (+1xxxxxxxxxx)'
     },
   },
-  Venmo: {
+  venmo: {
     placeholder: '@username',
     hint:        'Your Venmo handle (ex: @dany-aug)',
     disabled:    false,
     validate: h => h.startsWith('@') && !/\s/.test(h)
       ? '' : 'Must start with @ with no spaces (ex: @dany-aug)',
   },
-  PayPal: {
+  paypal: {
     placeholder: 'Email address',
     hint:        'PayPal email (ex: dany@gmail.com)',
     disabled:    false,
     validate: h => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(h)
       ? '' : 'Must be a valid email address',
   },
-  Remitly: {
+  remitly: {
     placeholder: 'Email address',
     hint:        'Remitly email (ex: dany@gmail.com)',
     disabled:    false,
     validate: h => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(h)
       ? '' : 'Must be a valid email address',
   },
-  'Cash in Hand': {
+  cash_in_hand: {
     placeholder: '—',
     hint:        'No handle needed',
     disabled:    true,
@@ -106,30 +115,30 @@ export function getPlaceholder(platform) {
   return RULES[platform]?.placeholder ?? ''
 }
 
-/** Returns true when the handle field should be disabled (e.g. Cash in Hand). */
+/** Returns true when the handle field should be disabled (e.g. cash_in_hand). */
 export function isHandleDisabled(platform) {
   return RULES[platform]?.disabled ?? false
 }
 
 /**
- * Maps a raw string (from CSV/paste) to a canonical platform value.
+ * Maps a raw string (from CSV/paste) to a canonical DB platform value.
  * Case-insensitive. Returns null if unrecognised.
  */
 export function normPlatform(raw) {
   if (!raw) return null
   const s = raw.toLowerCase().trim()
-  // Exact match first
-  const exact = P2P_PLATFORMS.find(p => p.value && p.value.toLowerCase() === s)
+  // Exact DB value match first
+  const exact = P2P_PLATFORMS.find(p => p.value && p.value === s)
   if (exact) return exact.value
-  // Fuzzy keyword matching
-  if (s.includes('moncash') || s.includes('mon cash')) return 'MonCash'
-  if (s.includes('natcash') || s.includes('nat cash')) return 'Natcash'
-  if (s.includes('lajan'))                              return 'Lajan Cash'
-  if (s.includes('cashapp') || s.includes('cash app')) return 'CashApp'
-  if (s.includes('zelle'))                              return 'Zelle'
-  if (s.includes('venmo'))                              return 'Venmo'
-  if (s.includes('paypal') || s.includes('pay pal'))   return 'PayPal'
-  if (s.includes('remitly'))                            return 'Remitly'
-  if (s.includes('hand') || s.includes('physical') || s.includes('cash in')) return 'Cash in Hand'
+  // Fuzzy keyword matching → always returns a DB value (lowercase)
+  if (s.includes('moncash') || s.includes('mon cash')) return 'moncash'
+  if (s.includes('natcash') || s.includes('nat cash')) return 'natcash'
+  if (s.includes('lajan'))                              return 'lajan_cash'
+  if (s.includes('cashapp') || s.includes('cash app')) return 'cashapp'
+  if (s.includes('zelle'))                              return 'zelle'
+  if (s.includes('venmo'))                              return 'venmo'
+  if (s.includes('paypal') || s.includes('pay pal'))   return 'paypal'
+  if (s.includes('remitly'))                            return 'remitly'
+  if (s.includes('hand') || s.includes('physical') || s.includes('cash in')) return 'cash_in_hand'
   return null
 }

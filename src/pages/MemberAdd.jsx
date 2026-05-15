@@ -65,21 +65,28 @@ export default function MemberAdd() {
 
     const invitationSentAt = new Date().toISOString()
 
+    const insertPayload = {
+      group_id:           groupId,
+      full_name:          form.full_name.trim(),
+      phone_number:       form.phone_number,
+      preferred_language: form.preferred_language,
+      rotation_position:  parseInt(form.rotation_position, 10),
+      p2p_platform:       form.p2p_platform || null,
+      p2p_handle:         form.p2p_handle   || null,
+      onboarded:          false,
+      onboarding_step:    0,
+      accepted_terms:     false,
+      invitation_sent_at: invitationSentAt,
+    }
+
+    // Safety net: convert any remaining empty strings to null
+    const cleanInsertPayload = Object.fromEntries(
+      Object.entries(insertPayload).map(([k, v]) => [k, v === '' ? null : v])
+    )
+
     const { data: member, error: insertErr } = await supabase
       .from('sol_members')
-      .insert({
-        group_id:           groupId,
-        full_name:          form.full_name.trim(),
-        phone_number:       form.phone_number,
-        preferred_language: form.preferred_language,
-        rotation_position:  parseInt(form.rotation_position, 10),
-        p2p_platform:       form.p2p_platform || null,
-        p2p_handle:         form.p2p_handle   || null,
-        onboarded:          false,
-        onboarding_step:    0,
-        accepted_terms:     false,
-        invitation_sent_at: invitationSentAt,
-      })
+      .insert(cleanInsertPayload)
       .select()
       .single()
 
