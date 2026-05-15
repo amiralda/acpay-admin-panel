@@ -69,50 +69,65 @@ function EditMemberModal({ member, onClose, onSaved, onDeleted }) {
     !fieldErrors.p2p_handle
 
   async function handleSave() {
-    const nameErr  = validateName(form.full_name)
-    const phoneErr = validatePhone(form.phone_number)
-    if (nameErr || phoneErr) { setFieldErrors({ full_name: nameErr, phone_number: phoneErr }); return }
+    try {
+      console.log('[1] handleSave started')
 
-    setSaveError('')
-    setSaving(true)
+      const nameErr  = validateName(form.full_name)
+      const phoneErr = validatePhone(form.phone_number)
+      console.log('[2] Validation:', { nameErr, phoneErr })
+      if (nameErr || phoneErr) { setFieldErrors({ full_name: nameErr, phone_number: phoneErr }); return }
 
-    const payload = {
-      full_name:          form.full_name.trim(),
-      phone_number:       form.phone_number,
-      preferred_language: form.preferred_language,
-      p2p_platform:       form.p2p_platform || null,
-      p2p_handle:         form.p2p_handle   || null,
-    }
+      setSaveError('')
+      setSaving(true)
 
-    console.log('=== EDIT MEMBER PATCH ===')
-    console.log('Form state:', JSON.stringify(form, null, 2))
-    console.log('Payload being sent:', JSON.stringify(payload, null, 2))
-    console.log('Member ID:', member?.id)
+      const payload = {
+        full_name:          form.full_name.trim(),
+        phone_number:       form.phone_number,
+        preferred_language: form.preferred_language,
+        p2p_platform:       form.p2p_platform || null,
+        p2p_handle:         form.p2p_handle   || null,
+      }
+      console.log('[3] Form state:', JSON.stringify(form, null, 2))
+      console.log('[3] Payload:', JSON.stringify(payload, null, 2))
+      console.log('[3] Member ID:', member?.id)
 
-    // Safety net: convert any remaining empty strings to null so no CHECK constraint fires
-    const cleanPayload = Object.fromEntries(
-      Object.entries(payload).map(([k, v]) => [k, v === '' ? null : v])
-    )
+      const cleanPayload = Object.fromEntries(
+        Object.entries(payload).map(([k, v]) => [k, v === '' ? null : v])
+      )
+      console.log('[3b] cleanPayload:', JSON.stringify(cleanPayload, null, 2))
 
-    const { error: err } = await supabase
-      .from('sol_members')
-      .update(cleanPayload)
-      .eq('id', member.id)
+      console.log('[4] Calling supabase.update...')
+      const { data, error: err } = await supabase
+        .from('sol_members')
+        .update(cleanPayload)
+        .eq('id', member.id)
+      console.log('[4] Supabase returned:', { data, error: err })
 
-    if (err) {
-      console.error('=== SUPABASE ERROR ===')
-      console.error('Code:', err.code)
-      console.error('Message:', err.message)
-      console.error('Details:', err.details)
-      console.error('Hint:', err.hint)
-      console.error('Full error object:', JSON.stringify(err, null, 2))
+      if (err) {
+        console.error('=== SUPABASE ERROR ===')
+        console.error('Code:', err.code)
+        console.error('Message:', err.message)
+        console.error('Details:', err.details)
+        console.error('Hint:', err.hint)
+        console.error('Full error object:', JSON.stringify(err, null, 2))
+        setSaving(false)
+        setSaveError(friendlyError(err))
+        return
+      }
+
+      console.log('[5] Updating local state')
+      setSaving(false)
+      console.log('[6] Calling onSaved')
+      onSaved({ ...member, ...form, full_name: form.full_name.trim() })
+      console.log('[6] onSaved returned')
+    } catch (err) {
+      console.error('[CATCH] Error type:', err?.constructor?.name)
+      console.error('[CATCH] Error message:', err?.message)
+      console.error('[CATCH] Stack:', err?.stack)
+      console.error('[CATCH] Full:', err)
       setSaving(false)
       setSaveError(friendlyError(err))
-      return
     }
-
-    setSaving(false)
-    onSaved({ ...member, ...form, full_name: form.full_name.trim() })
   }
 
   async function handleDelete() {
