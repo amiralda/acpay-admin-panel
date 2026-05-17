@@ -9,12 +9,20 @@ export default async function handler(req, res) {
 
   // Map event names to n8n webhook paths
   const webhookMap = {
+    // Triggered when a new member is added in admin panel → starts onboarding flow
     'member-added': 'sol2-onboarding',
-    // Future events can be added here:
-    // 'member-updated': 'sol2-member-updated',
-    // 'member-deleted': 'sol2-member-deleted',
-    // 'cycle-advanced': 'sol2-cycle-advanced',
-    // 'dispute-resolved': 'sol2-dispute-resolved',
+
+    // Triggered when a member confirms payment (future use)
+    'payment-confirmation': 'sol2-confirmation',
+
+    // Triggered when admin sends a message to a member (future use)
+    'query': 'sol2-query',
+
+    // Triggered to verify Meta webhook on initial setup
+    'verify': 'acpay-verify',
+
+    // Inbound WhatsApp messages from Meta (handled by Meta directly, not from admin)
+    'inbound': 'acpay-inbound',
   };
 
   const webhookPath = webhookMap[event];
