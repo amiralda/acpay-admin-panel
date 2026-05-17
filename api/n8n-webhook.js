@@ -9,7 +9,7 @@ export default async function handler(req, res) {
 
   // Map event names to n8n webhook paths
   const webhookMap = {
-    'member-added': 'sol2-member-added',
+    'member-added': 'sol2-onboarding',
     // Future events can be added here:
     // 'member-updated': 'sol2-member-updated',
     // 'member-deleted': 'sol2-member-deleted',
