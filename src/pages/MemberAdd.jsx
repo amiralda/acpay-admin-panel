@@ -7,8 +7,6 @@ import { friendlyError } from '../lib/errors'
 import { LANGUAGES } from '../lib/languages'
 import { ArrowLeft } from 'lucide-react'
 
-const N8N_WEBHOOK = import.meta.env.VITE_N8N_WEBHOOK_URL
-
 const EMPTY_ERRORS = { full_name: '', phone_number: '', p2p_handle: '' }
 
 export default function MemberAdd() {
@@ -104,22 +102,25 @@ export default function MemberAdd() {
       .single()
 
     try {
-      await fetch(N8N_WEBHOOK, {
+      await fetch('/api/n8n-webhook', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          member_id:           member.id,
-          phone_number:        form.phone_number,
-          full_name:           form.full_name.trim(),
-          preferred_language:  form.preferred_language,
-          p2p_platform:        form.p2p_platform || null,
-          p2p_handle:          form.p2p_handle   || null,
-          group_name:          group?.name ?? '',
-          contribution_amount: group?.contribution_amount ?? 0,
-          frequency:           group?.frequency ?? '',
-          rotation_position:   parseInt(form.rotation_position, 10),
-          total_cycles:        group?.total_cycles ?? 0,
-          terms_url:           'https://acpay.net/terms',
+          event: 'member-added',
+          payload: {
+            member_id:           member.id,
+            phone_number:        form.phone_number,
+            full_name:           form.full_name.trim(),
+            preferred_language:  form.preferred_language,
+            p2p_platform:        form.p2p_platform || null,
+            p2p_handle:          form.p2p_handle   || null,
+            group_name:          group?.name ?? '',
+            contribution_amount: group?.contribution_amount ?? 0,
+            frequency:           group?.frequency ?? '',
+            rotation_position:   parseInt(form.rotation_position, 10),
+            total_cycles:        group?.total_cycles ?? 0,
+            terms_url:           'https://acpay.net/terms',
+          },
         }),
       })
     } catch (_) {
