@@ -127,6 +127,22 @@ export default function MemberAdd() {
       // webhook failure is non-fatal — member is already in DB
     }
 
+    // Non-blocking welcome message via Meta direct-send — fire and forget
+    fetch('/api/n8n-webhook', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'send-welcome',
+        payload: {
+          phone_number:        form.phone_number,
+          full_name:           form.full_name?.trim() || 'Member',
+          group_name:          group?.name              || '',
+          contribution_amount: group?.contribution_amount || 0,
+          preferred_language:  form.preferred_language  || 'ht',
+        },
+      }),
+    }).catch(err => console.error('Welcome send failed:', err))
+
     setLoading(false)
     navigate(`/groups/${groupId}`)
   }
