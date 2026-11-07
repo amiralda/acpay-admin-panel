@@ -95,33 +95,19 @@ export default function MemberAdd() {
       return
     }
 
-    const { data: group } = await supabase
-      .from('sol_groups')
-      .select('name, contribution_amount, frequency, total_cycles')
-      .eq('id', groupId)
-      .single()
+    // The server reads the member (and its group) back from the database
+    // with this session's token, so only the member id is sent.
+    const { data: { session } } = await supabase.auth.getSession()
+    const authHeaders = {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${session?.access_token ?? ''}`,
+    }
 
     try {
       await fetch('/api/n8n-webhook', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event: 'member-added',
-          payload: {
-            member_id:           member.id,
-            phone_number:        form.phone_number,
-            full_name:           form.full_name.trim(),
-            preferred_language:  form.preferred_language,
-            p2p_platform:        form.p2p_platform || null,
-            p2p_handle:          form.p2p_handle   || null,
-            group_name:          group?.name ?? '',
-            contribution_amount: group?.contribution_amount ?? 0,
-            frequency:           group?.frequency ?? '',
-            rotation_position:   parseInt(form.rotation_position, 10),
-            total_cycles:        group?.total_cycles ?? 0,
-            terms_url:           'https://acpay.net/terms',
-          },
-        }),
+        headers: authHeaders,
+        body:    JSON.stringify({ event: 'member-added', payload: { member_id: member.id } }),
       })
     } catch (_) {
       // webhook failure is non-fatal — member is already in DB
@@ -130,17 +116,8 @@ export default function MemberAdd() {
     // Non-blocking welcome message via Meta direct-send — fire and forget
     fetch('/api/n8n-webhook', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        event: 'send-welcome',
-        payload: {
-          phone_number:        form.phone_number,
-          full_name:           form.full_name?.trim() || 'Member',
-          group_name:          group?.name              || '',
-          contribution_amount: group?.contribution_amount || 0,
-          preferred_language:  form.preferred_language  || 'ht',
-        },
-      }),
+      headers: authHeaders,
+      body:    JSON.stringify({ event: 'send-welcome', payload: { member_id: member.id } }),
     }).catch(err => console.error('Welcome send failed:', err))
 
     setLoading(false)
