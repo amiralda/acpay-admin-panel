@@ -19,7 +19,9 @@ export default function Login() {
     setLoading(true)
     const { error: err } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: REDIRECT },
+      // Admin accounts are created by hand in Supabase; the login page
+      // never creates new users (7 Doors audit 2026-11-07, Door 5).
+      options: { emailRedirectTo: REDIRECT, shouldCreateUser: false },
     })
     setLoading(false)
     if (err) { setError(err.message); return }
